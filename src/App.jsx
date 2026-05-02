@@ -4845,7 +4845,8 @@ export default function TechnoVocab() {
         /* Tab scroll — always on, not just mobile */
         .tab-outer{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-bottom:1px solid rgba(255,255,255,0.04)}
         .tab-outer::-webkit-scrollbar{display:none}
-        .tab-inner{display:flex;padding:0 8px;width:max-content;min-width:100%}
+        .tab-inner{display:flex;padding:0 8px;width:max-content;min-width:100%;justify-content:center}
+        @media(max-width:768px){.tab-inner{justify-content:flex-start}}
         .tab-btn{white-space:nowrap;flex-shrink:0}
         /* Seq scroll — always on */
         .seq-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}

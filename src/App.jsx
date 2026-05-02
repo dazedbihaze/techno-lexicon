@@ -1,5 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 
+// ── Responsive hook ─────────────────────────────────────────
+function useIsMobile() {
+  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return mobile;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SYNTH PRIMITIVES — Web Audio API building blocks
 // ═══════════════════════════════════════════════════════════════
@@ -1551,6 +1562,7 @@ function Platter({ playing, bpm, size=150 }) {
 
 // ── DJ Booth component ──────────────────────────────────────────
 function DJBooth() {
+  const isMobile = useIsMobile();
   const [dA, setDA] = useState({ genre:'Detroit Techno', pitch:0, playing:false });
   const [dB, setDB] = useState({ genre:'Psytrance', pitch:0, playing:false });
   const [mx, setMx] = useState({ aH:0.5,aM:0.5,aL:0.5,aF:1,aV:0.8, bH:0.5,bM:0.5,bL:0.5,bF:1,bV:0.8, xf:0.5 });
@@ -1722,12 +1734,11 @@ function DJBooth() {
             style={{ flex:2, background: deck.playing ? col+'22':'transparent', border:`1px solid ${col}55`, color:col, padding:'10px 0', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:14, letterSpacing:2, transition:'all 0.15s' }}>
             {deck.playing ? '⏸' : '▶'}
           </button>
-          <button onClick={() => { stopDeck(id); setD(d=>({...d,playing:false})); }}
+          <button onClick={() => { stopDeck(id); setD(d=>({...d,playing:false})); pick('cue'); }}
             style={{ flex:1, background:'transparent', border:'1px solid #ffffff15', color:'#555', padding:'10px 0', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:12, letterSpacing:1 }}
             onMouseEnter={e => e.target.style.color='#fff'}
             onMouseLeave={e => e.target.style.color='#555'}
-            title="Stop / Cue"
-            onClick={() => { stopDeck(id); setD(d=>({...d,playing:false})); pick('cue'); }}>
+            title="Stop / Cue">
             ■
           </button>
         </div>
@@ -1776,7 +1787,7 @@ function DJBooth() {
       </div>
 
       {/* Main layout: Deck A | Mixer | Deck B */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 220px 1fr', gap:12, marginBottom:20 }}>
+      <div className="dj-grid" style={{ display:'grid', gridTemplateColumns:'1fr 220px 1fr', gap:12, marginBottom:20 }}>
 
         {/* Deck A */}
         <DeckPanel id="A" deck={dA} setD={setDA} />
@@ -1842,8 +1853,8 @@ function DJBooth() {
 
       {/* Info Panel */}
       <div style={{ background:'#08080f', border:`1px solid ${info ? '#ffffff18':'#ffffff08'}`, padding:'18px 20px', minHeight:110 }}>
-        <div style={{ display:'flex', gap:16, alignItems:'flex-start' }}>
-          <div style={{ fontSize:28, flexShrink:0, lineHeight:1 }}>{infoData.emoji}</div>
+        <div style={{ display:'flex', gap:12, alignItems:'flex-start', flexWrap:'wrap' }}>
+          <div style={{ fontSize:24, flexShrink:0, lineHeight:1 }}>{infoData.emoji}</div>
           <div style={{ flex:1 }}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'#fff', letterSpacing:3, marginBottom:8 }}>{infoData.title}</div>
             <p style={{ fontFamily:"'Rajdhani',sans-serif", fontSize:15, color:'#aaa', margin:'0 0 8px', lineHeight:1.6 }}>{infoData.body}</p>
@@ -1860,7 +1871,7 @@ function DJBooth() {
       {/* Quick technique cards */}
       <div style={{ marginTop:16 }}>
         <div style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:10, color:'#333', letterSpacing:3, marginBottom:12 }}>// FIRST MOVES — TRY THESE WITH BOTH DECKS PLAYING</div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+        <div className="tech-cards" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
           {[
             { n:'THE EQ KILL', d:'Start both decks. Turn LOW EQ on Deck A all the way left (cut). Now only Deck B has bass. This is the single most important DJ technique — clean bass handoffs.', c:'#ff6b6b' },
             { n:'THE FILTER BUILD', d:'While a deck is playing, slowly drag the FILTER knob left over 8 seconds. Hear the track get darker. Snap it back right. That release IS the drop technique.', c:'#4ecdc4' },
@@ -2572,8 +2583,9 @@ function ModuleGrid({ color, onComplete }) {
         </div>
         {/* Grid */}
         <div style={{ background:'#07070f', border:'1px solid #1a1a2e', padding:16, borderRadius:8, marginBottom:16 }}>
+          <div className="seq-scroll" style={{ minWidth:0 }}>
           {/* Beat labels */}
-          <div style={{ display:'grid', gridTemplateColumns:'60px repeat(16,1fr)', gap:2, marginBottom:4 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'60px repeat(16,1fr)', gap:2, marginBottom:4, minWidth:460 }}>
             <div />
             {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16].map(n => (
               <div key={n} style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:7, color: [1,5,9,13].includes(n) ? '#555' : '#222', textAlign:'center', letterSpacing:0 }}>
@@ -2590,7 +2602,8 @@ function ModuleGrid({ color, onComplete }) {
               ))}
             </div>
           ))}
-        </div>
+          </div>{/* end seq-scroll */}
+        </div>{/* end grid container */}
         {/* Controls */}
         <div style={{ display:'flex', gap:10, alignItems:'center' }}>
           <button onClick={() => setPlaying(p => !p)}
@@ -3822,7 +3835,7 @@ function M2Interactive({ getCtx, color }) {
       <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 10, color, letterSpacing: 2, marginBottom: 14 }}>🎛️ INTERACTIVE — PULSE VISUALISER + TAP ALONG</div>
 
       {/* Beat dots */}
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
         {[1, 2, 3, 4].map(b => (
           <div key={b} style={{
             width: 52, height: 52, borderRadius: '50%',
@@ -4088,7 +4101,8 @@ function M4Interactive({ getCtx, color }) {
       </div>
 
       {/* Beat labels */}
-      <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(16, 1fr)', gap: 2, marginBottom: 4, paddingLeft: 2 }}>
+      <div className="seq-scroll">
+      <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(16, 1fr)', gap: 2, marginBottom: 4, paddingLeft: 2, minWidth: 420 }}>
         <div />
         {Array.from({ length: 16 }, (_, i) => (
           <div key={i} style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 7, color: i % 4 === 0 ? '#555' : '#2a2a2a', textAlign: 'center', letterSpacing: 0 }}>
@@ -4116,6 +4130,7 @@ function M4Interactive({ getCtx, color }) {
           ))}
         </div>
       ))}
+      </div>{/* end seq-scroll */}
 
       {/* Controls */}
       <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -4524,8 +4539,9 @@ function M8Interactive({ getCtx, color }) {
       </div>
 
       {/* Grid */}
+      <div className="seq-scroll">
       {trackDefs.map(track => (
-        <div key={track.key} style={{ display: 'grid', gridTemplateColumns: '72px repeat(16, 1fr)', gap: 2, marginBottom: 3 }}>
+        <div key={track.key} style={{ display: 'grid', gridTemplateColumns: '72px repeat(16, 1fr)', gap: 2, marginBottom: 3, minWidth: 460 }}>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingRight: 6 }}>
             <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 8, color: track.col, letterSpacing: 1 }}>{track.name}</span>
             <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 7, color: '#333' }}>{track.hz}</span>
@@ -4541,6 +4557,7 @@ function M8Interactive({ getCtx, color }) {
           ))}
         </div>
       ))}
+      </div>{/* end seq-scroll */}
 
       {/* Playback */}
       <div style={{ display: 'flex', gap: 10, marginTop: 14, alignItems: 'center' }}>
@@ -4557,6 +4574,7 @@ function M8Interactive({ getCtx, color }) {
 }
 
 export default function TechnoVocab() {
+  const isMobile = useIsMobile();
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("glossary");
@@ -4801,10 +4819,10 @@ export default function TechnoVocab() {
   };
 
   return (
-    <div style={{ minHeight:"100vh", background:"#050507", fontFamily:"'Courier New',monospace", color:"#e0e0e0", overflowX:"hidden" }}>
+    <div style={{ minHeight:"100vh", background:"#050507", fontFamily:"'Courier New',monospace", color:"#e0e0e0", overflowX:"hidden", width:"100%", maxWidth:"100vw" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=Rajdhani:wght@300;400;600;700&display=swap');
-        *{box-sizing:border-box}
+        *{box-sizing:border-box} html,body{overflow-x:hidden;width:100%}
         ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#0a0a0f}::-webkit-scrollbar-thumb{background:#00ffcc44;border-radius:2px}
         .glitch-text{animation:glitch 8s infinite}
         @keyframes glitch{0%,92%,100%{text-shadow:none;transform:translate(0)}93%{text-shadow:-2px 0 #ff0080,2px 0 #00ffcc;transform:translate(1px,-1px)}94%{text-shadow:2px 0 #ff0080,-2px 0 #00ffcc;transform:translate(-1px,1px)}95%{text-shadow:none;transform:translate(0)}96%{text-shadow:-1px 0 #ff0080;transform:translate(2px,0)}97%{text-shadow:none;transform:translate(0)}}
@@ -4823,14 +4841,35 @@ export default function TechnoVocab() {
         .beat-circle.flash{background:#00ffcc33;box-shadow:0 0 40px #00ffcc88,0 0 80px #00ffcc44;transform:scale(1.15)}.beat-circle.active{box-shadow:0 0 20px #00ffcc44}
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}.fade-in{animation:fadeIn 0.3s ease forwards}
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}.spin{animation:spin 2s linear infinite}
+        /* ── MOBILE RESPONSIVE ── */
+        /* Tab scroll — always on, not just mobile */
+        .tab-outer{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-bottom:1px solid rgba(255,255,255,0.04)}
+        .tab-outer::-webkit-scrollbar{display:none}
+        .tab-inner{display:flex;padding:0 8px;width:max-content;min-width:100%}
+        .tab-btn{white-space:nowrap;flex-shrink:0}
+        /* Seq scroll — always on */
+        .seq-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+        .seq-scroll::-webkit-scrollbar{height:2px}
+        .seq-scroll::-webkit-scrollbar-thumb{background:#00ffcc33;border-radius:2px}
+        @media(max-width:768px){
+          .tab-btn{padding:8px 10px;font-size:10px;letter-spacing:1px}
+          .term-card{padding:12px 14px}
+          .beat-circle{width:54px;height:54px;font-size:9px}
+          .search-input{font-size:12px;padding:10px 14px}
+          .cat-btn{padding:5px 10px;font-size:10px}
+          .genre-cols{grid-template-columns:1fr !important}
+          .dj-grid{grid-template-columns:1fr !important}
+          .tech-cards{grid-template-columns:1fr !important}
+          .m3-options{flex-direction:column}
+        }
       `}</style>
       <div className="scanlines" />
 
       {/* Header */}
-      <div style={{ position:"relative", zIndex:10, borderBottom:"1px solid #ffffff0a", padding:"30px 24px 20px" }}>
+      <div style={{ position:"relative", zIndex:10, borderBottom:"1px solid #ffffff0a", padding: isMobile ? "20px 16px 14px" : "30px 24px 20px" }}>
         <div style={{ maxWidth:900, margin:"0 auto" }}>
           <h1 className="glitch-text" style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(48px,10vw,80px)", color:"#fff", letterSpacing:6, margin:0, lineHeight:1 }}>TECHNO LEXICON</h1>
-          <p style={{ color:"#00ffcc", fontFamily:"'Share Tech Mono',monospace", fontSize:12, letterSpacing:3, margin:"4px 0 0", textTransform:"uppercase" }}>
+          <p style={{ color:"#00ffcc", fontFamily:"'Share Tech Mono',monospace", fontSize:isMobile?10:12, letterSpacing:isMobile?1:3, margin:"4px 0 0", textTransform:"uppercase", lineHeight:1.5 }}>
             // The Underground Dictionary — BPM · Genres · Production · DJ Skills
           </p>
           {playingGenre && (
@@ -4848,15 +4887,15 @@ export default function TechnoVocab() {
       </div>
 
       {/* Tabs */}
-      <div style={{ borderBottom:"1px solid #ffffff0a", position:"relative", zIndex:10 }}>
-        <div style={{ maxWidth:900, margin:"0 auto", padding:"0 24px", display:"flex" }}>
+      <div className="tab-outer" style={{ position:"relative", zIndex:10 }}>
+        <div className="tab-inner">
           {[["foundations","FOUNDATIONS"],["glossary","GLOSSARY"],["bpm","BPM GUIDE"],["genres","GENRE MAP + AUDIO"],["dj","DJ BOOTH"]].map(([id,lbl]) => (
             <button key={id} className={`tab-btn ${activeTab===id?"active":""}`} onClick={() => setActiveTab(id)}>{lbl}</button>
           ))}
         </div>
       </div>
 
-      <div style={{ maxWidth:900, margin:"0 auto", padding:"24px", position:"relative", zIndex:10 }}>
+      <div style={{ maxWidth:900, margin:"0 auto", padding: isMobile ? "14px 12px" : "24px", position:"relative", zIndex:10 }}>
 
         {/* ══ GLOSSARY ══ */}
         {activeTab==="glossary" && (
@@ -4949,7 +4988,7 @@ export default function TechnoVocab() {
                     <div style={{ marginTop:14, paddingTop:14, borderTop:"1px solid #ffffff0a" }} className="fade-in">
 
                       {/* Level + audio demo row */}
-                      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, flexWrap:'wrap' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16, flexWrap:'wrap', rowGap:8 }}>
                         {term.level && (() => {
                           const lvlColor = term.level==='Beginner' ? '#69f0ae' : term.level==='Intermediate' ? '#ffca28' : '#ff7043';
                           return <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:10, letterSpacing:2, color:lvlColor, background:lvlColor+'18', border:`1px solid ${lvlColor}44`, padding:'3px 10px' }}>{term.level.toUpperCase()}</span>;
@@ -4981,8 +5020,9 @@ export default function TechnoVocab() {
                       {term.visual && term.visual.length > 0 && (
                         <div style={{ background:'#070710', border:'1px solid #ffffff0a', padding:'12px 14px', marginBottom:14 }}>
                           <div style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:10, color:'#555', letterSpacing:2, marginBottom:10 }}>🎛️ THE PATTERN — 16 STEPS = 1 BAR</div>
+                          <div className="seq-scroll">
                           {term.visual.map((row, ri) => (
-                            <div key={ri} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+                            <div key={ri} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6, minWidth:300 }}>
                               <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:9, color:'#555', letterSpacing:1, width:52, flexShrink:0, textAlign:'right' }}>{row.label}</span>
                               <div style={{ display:'flex', gap:2 }}>
                                 {row.p.map((v, si) => {
@@ -5003,11 +5043,12 @@ export default function TechnoVocab() {
                             </div>
                           ))}
                           {/* Beat labels */}
-                          <div style={{ display:'flex', gap:2, paddingLeft:60 }}>
+                          <div style={{ display:'flex', gap:2, paddingLeft:60, minWidth:300 }}>
                             {[1,2,3,4].map(b => (
                               <div key={b} style={{ width:58, fontFamily:"'Share Tech Mono',monospace", fontSize:8, color:'#333', letterSpacing:1, textAlign:'center', marginLeft: b>1?4:0 }}>BEAT {b}</div>
                             ))}
                           </div>
+                          </div>{/* end seq-scroll */}
                         </div>
                       )}
 
@@ -5084,7 +5125,7 @@ export default function TechnoVocab() {
             <h3 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:24, letterSpacing:3, color:"#fff", marginBottom:16 }}>BPM RANGES BY GENRE</h3>
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {bpmRanges.map(r => (
-                <div key={r.genre} style={{ display:"grid", gridTemplateColumns:"180px 1fr 100px", gap:16, alignItems:"center" }}>
+                <div key={r.genre} style={{ display:"grid", gridTemplateColumns:"minmax(120px,180px) 1fr 60px", gap:8, alignItems:"center" }}>
                   <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:12, color:r.color, letterSpacing:1 }}>{r.genre}</span>
                   <div style={{ background:"#0a0a12", height:16, border:"1px solid #ffffff08", position:"relative" }}>
                     <div style={{ position:"absolute", left:`${r.min-100}%`, width:`${r.max-r.min}%`, background:r.color, height:"100%", opacity:0.7, borderRadius:1 }} />
@@ -5099,7 +5140,7 @@ export default function TechnoVocab() {
         {/* ══ GENRES + AUDIO ══ */}
         {activeTab==="genres" && (
           <div className="fade-in">
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:24 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:24, flexWrap:'wrap', gap:10 }}>
               <div>
                 <h2 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:36, letterSpacing:4, color:"#fff", marginBottom:4 }}>GENRE MAP + AUDIO</h2>
                 <p style={{ color:"#888", fontFamily:"'Rajdhani',sans-serif", fontSize:14, margin:0 }}>Press ▶ on any genre to hear a synthesized audio demo — all sounds generated in your browser</p>
@@ -5107,7 +5148,7 @@ export default function TechnoVocab() {
               {playingGenre && <button onClick={fullStop} style={{ background:'transparent', border:'1px solid #ff444444', color:'#ff4444', padding:'8px 16px', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:11, letterSpacing:2 }}>⏹ STOP ALL</button>}
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:40 }}>
+            <div className="genre-cols" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:40 }}>
               <div>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:"#00e5ff", letterSpacing:4, marginBottom:4 }}>TECHNO</div>
                 <div style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:10, color:"#00e5ff55", letterSpacing:2, marginBottom:16 }}>Detroit, 1980s → Berlin → Global</div>
@@ -5129,7 +5170,7 @@ export default function TechnoVocab() {
             </div>
 
             <h3 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, letterSpacing:3, color:"#fff", marginBottom:16 }}>QUICK BPM REFERENCE</h3>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))", gap:2 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(min(250px,100%),1fr))", gap:2 }}>
               {bpmRanges.map(r => (
                 <div key={r.genre} style={{ padding:"14px 18px", background:"#0a0a10", border:"1px solid #ffffff08", borderLeft:`3px solid ${r.color}` }}>
                   <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:r.color, letterSpacing:2 }}>{r.genre}</div>
@@ -5151,7 +5192,7 @@ export default function TechnoVocab() {
 
         {/* ══ DJ BOOTH ══ */}
         {activeTab==="dj" && (
-          <DJBooth />
+          <div style={{ width:'100%', overflowX:'hidden' }}><DJBooth /></div>
         )}
 
       </div>

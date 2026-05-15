@@ -48,7 +48,7 @@ function sBass(ctx, out, t, { freq = 55, type = 'sawtooth', filt = 600, q = 8, d
   f.frequency.setValueAtTime(filt * 3, t); f.frequency.exponentialRampToValueAtTime(filt, t + decay * 0.6);
   const g = ctx.createGain(); g.gain.setValueAtTime(gain, t + 0.001); g.gain.exponentialRampToValueAtTime(0.001, t + decay);
   osc.connect(f); f.connect(g); g.connect(out); osc.start(t); osc.stop(t + decay + 0.05);
-}
+}¸
 
 function sAcid(ctx, out, t, { freq = 55, filt = 400, q = 20, decay = 0.16, gain = 0.48 } = {}) {
   const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = freq;
@@ -1041,7 +1041,7 @@ const terms = [
     listen:"Notice how the sound changes from full, to muffled, to thin, to bright. Each is EQ targeting different frequency ranges.",
     example:"Cutting the low frequencies on the outgoing track while bringing in the new track = EQ transition. Every DJ does this." },
 
-  { id:26, term:"Sequencer", category:"Production", short:"Pattern programmer",
+  { id:26, term:"Sequencer (Interactive)", category:"Production", short:"Pattern programmer",
     level:"Intermediate",
     description:"A tool that programs patterns of notes or beats to loop. The fundamental tool for making electronic music.",
     plain:"A sequencer is like a grid of on/off switches, each representing a 16th note in time. Step 1 on = kick hits. Steps 2, 3, 4 off = silence. You flip switches to build a pattern, press play, and it loops forever. This is literally how all electronic drum patterns are made.",
@@ -4573,6 +4573,271 @@ function M8Interactive({ getCtx, color }) {
   );
 }
 
+
+
+// ═══════════════════════════════════════════════════════════════
+// SEQUENCER INTERACTIVE — embedded in Sequencer glossary term
+// ═══════════════════════════════════════════════════════════════
+function SequencerInteractive() {
+  const TRACKS = [
+    { id:'kick',  label:'KICK',   color:'#00ffcc', type:'kick'  },
+    { id:'hat',   label:'HI-HAT', color:'#7986cb', type:'hat'   },
+    { id:'snare', label:'SNARE',  color:'#ff7043', type:'snare' },
+    { id:'bass',  label:'BASS',   color:'#ffca28', type:'bass'  },
+  ];
+
+  const DEFAULT_PATTERNS = [
+    { kick:[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], hat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], bass:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
+    { kick:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], hat:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], bass:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
+    { kick:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], hat:[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0], snare:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], bass:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
+    { kick:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], hat:[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0], snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], bass:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
+    { kick:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0], hat:[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0], snare:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], bass:[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0] },
+  ];
+
+  const LESSONS = [
+    { title:'Step 1 — one kick drum', badge:'the pulse', tracks:['kick'], explain:'A single kick drum on step 1. Press Play — the sequencer loops 16 steps continuously. Every time it reaches step 1 again, the kick fires. One sound, repeating forever. This is the heartbeat every techno track is built on.' },
+    { title:'Step 2 — four on the floor', badge:'4/4 pattern', tracks:['kick'], explain:'The kick now hits on steps 1, 5, 9, and 13 — one every 4 steps, once per beat. Four kicks per bar. This is called 4/4 or "four on the floor" — the foundation of all techno and electronic music.' },
+    { title:'Step 3 — add the hi-hat', badge:'the offbeat', tracks:['kick','hat'], explain:'Hi-hat lands on steps 3, 7, 11, 15 — exactly between the kicks. This is the offbeat. Hear how much forward energy it adds — BOOM...tsss...BOOM...tsss. The contrast between kick and hat creates the driving pulse of techno.' },
+    { title:'Step 4 — add the snare', badge:'the backbeat', tracks:['kick','hat','snare'], explain:'The snare hits on steps 5 and 13 — beats 2 and 4. This is the backbeat. Almost all electronic music puts the snare here. It creates tension and release that makes the kick feel even more powerful.' },
+    { title:'Step 5 — add a bassline', badge:'full groove', tracks:['kick','hat','snare','bass'], explain:'Bass notes land with the kick and in the spaces between — adding a melodic layer to the rhythm. This complete pattern is the skeleton of a real techno track. Everything you hear on a dancefloor starts here.' },
+  ];
+
+  const freshPatterns = () => DEFAULT_PATTERNS.map(p => ({
+    kick:[...p.kick], hat:[...p.hat], snare:[...p.snare], bass:[...p.bass]
+  }));
+
+  const [lesson, setLesson] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [curStep, setCurStep] = useState(-1);
+  const [bpm, setBpm] = useState(120);
+  const [pats, setPats] = useState(freshPatterns);
+
+  const ctxRef = useRef(null);
+  const timerRef = useRef(null);
+  const curStepRef = useRef(0);
+  const patsRef = useRef(pats);
+  const lessonRef = useRef(lesson);
+  patsRef.current = pats;
+  lessonRef.current = lesson;
+
+  const getCtx = () => {
+    if (!ctxRef.current) ctxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    return ctxRef.current;
+  };
+
+  const resumeCtx = () => new Promise(res => {
+    const ctx = getCtx();
+    if (ctx.state === 'suspended') ctx.resume().then(res); else res();
+  });
+
+  const playSound = (type) => {
+    const ctx = getCtx();
+    const t = ctx.currentTime + 0.01;
+    if (type === 'kick') {
+      const osc = ctx.createOscillator(); const g = ctx.createGain();
+      osc.frequency.setValueAtTime(160, t); osc.frequency.exponentialRampToValueAtTime(42, t+0.35);
+      g.gain.setValueAtTime(0.8, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.45);
+      osc.connect(g); g.connect(ctx.destination); osc.start(t); osc.stop(t+0.5);
+    } else if (type === 'hat') {
+      const sz = Math.floor(ctx.sampleRate*0.04);
+      const buf = ctx.createBuffer(1,sz,ctx.sampleRate);
+      const d = buf.getChannelData(0); for(let i=0;i<sz;i++) d[i]=Math.random()*2-1;
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=8000;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.18,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.05);
+      src.connect(hp); hp.connect(g); g.connect(ctx.destination); src.start(t); src.stop(t+0.06);
+    } else if (type === 'snare') {
+      const sz = Math.floor(ctx.sampleRate*0.12);
+      const buf = ctx.createBuffer(1,sz,ctx.sampleRate);
+      const d = buf.getChannelData(0); for(let i=0;i<sz;i++) d[i]=Math.random()*2-1;
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const bp = ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1800;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.35,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+      const tone = ctx.createOscillator(); tone.frequency.value=190;
+      const tg = ctx.createGain(); tg.gain.setValueAtTime(0.1,t); tg.gain.exponentialRampToValueAtTime(0.001,t+0.06);
+      src.connect(bp); bp.connect(g); g.connect(ctx.destination); src.start(t); src.stop(t+0.14);
+      tone.connect(tg); tg.connect(ctx.destination); tone.start(t); tone.stop(t+0.08);
+    } else if (type === 'bass') {
+      const osc = ctx.createOscillator(); osc.type='sawtooth'; osc.frequency.value=110;
+      const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=500;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.35,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.22);
+      osc.connect(lp); lp.connect(g); g.connect(ctx.destination); osc.start(t); osc.stop(t+0.28);
+    }
+  };
+
+  const tick = () => {
+    const s = curStepRef.current;
+    const pat = patsRef.current[lessonRef.current];
+    const activeTracks = LESSONS[lessonRef.current].tracks;
+    TRACKS.forEach(tr => {
+      if (activeTracks.includes(tr.id) && pat[tr.id][s]) playSound(tr.type);
+    });
+    setCurStep(s);
+    curStepRef.current = (s + 1) % 16;
+  };
+
+  const startSeq = (newBpm) => {
+    const b = newBpm || bpm;
+    curStepRef.current = 0;
+    resumeCtx().then(() => {
+      tick();
+      timerRef.current = setInterval(tick, (60/b/4)*1000);
+      setPlaying(true);
+    });
+  };
+
+  const stopSeq = () => {
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+    setPlaying(false);
+    setCurStep(-1);
+  };
+
+  const togglePlay = () => { if (playing) stopSeq(); else startSeq(); };
+
+  const changeBpm = (v) => {
+    setBpm(v);
+    if (playing) { stopSeq(); setTimeout(() => startSeq(v), 30); }
+  };
+
+  const goLesson = (idx) => {
+    stopSeq();
+    setLesson(idx);
+    setCurStep(-1);
+  };
+
+  const toggleSquare = (tid, i) => {
+    setPats(prev => {
+      const next = prev.map((p,li) => li === lessonRef.current
+        ? { ...p, [tid]: p[tid].map((v,si) => si===i ? (v?0:1) : v) }
+        : p
+      );
+      if (next[lessonRef.current][tid][i]) {
+        resumeCtx().then(() => playSound(TRACKS.find(t=>t.id===tid).type));
+      }
+      return next;
+    });
+  };
+
+  const resetAll = () => { stopSeq(); setPats(freshPatterns()); };
+
+  useEffect(() => () => stopSeq(), []);
+
+  const cur = LESSONS[lesson];
+  const pat = pats[lesson];
+
+  return (
+    <div onClick={e => e.stopPropagation()}
+      style={{ background:'#07070f', border:'1px solid #00ffcc22', borderLeft:'3px solid #00ffcc', padding:16, marginBottom:16, marginTop:8 }}>
+
+      <div style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:10, color:'#00ffcc', letterSpacing:2, marginBottom:14 }}>
+        🎛️ LIVE INTERACTIVE — BUILD A TECHNO PATTERN FROM SCRATCH
+      </div>
+
+      {/* Lesson nav */}
+      <div style={{ display:'flex', gap:6, marginBottom:14, alignItems:'center', flexWrap:'wrap' }}>
+        {LESSONS.map((l, i) => (
+          <button key={i} onClick={e => { e.stopPropagation(); goLesson(i); }}
+            style={{ background:lesson===i?'#00ffcc20':'transparent', border:`1px solid ${lesson===i?'#00ffcc':'#ffffff18'}`, color:lesson===i?'#00ffcc':'#555', padding:'5px 12px', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:9, letterSpacing:1 }}>
+            {i+1}. {['KICK','4/4','HI-HAT','SNARE','BASS'][i]}
+          </button>
+        ))}
+      </div>
+
+      {/* Title + badge */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+        <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:11, color:'#e0e0e0' }}>{cur.title}</span>
+        <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:9, color:'#00ffcc', background:'#00ffcc12', border:'1px solid #00ffcc30', padding:'2px 8px' }}>{cur.badge}</span>
+      </div>
+
+      {/* Grid */}
+      <div style={{ overflowX:'auto', marginBottom:12 }}>
+        <div style={{ minWidth:480 }}>
+          {cur.tracks.map(tid => {
+            const tr = TRACKS.find(t=>t.id===tid);
+            return (
+              <div key={tid} style={{ display:'flex', alignItems:'center', gap:2, marginBottom:4 }}>
+                <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:8, color:tr.color, width:50, textAlign:'right', paddingRight:8, flexShrink:0 }}>{tr.label}</span>
+                {[0,1,2,3].map(beat => (
+                  <div key={beat} style={{ display:'flex', gap:2, marginRight:4 }}>
+                    {[0,1,2,3].map(sub => {
+                      const si = beat*4+sub;
+                      const on = pat[tid][si];
+                      const active = curStep === si;
+                      return (
+                        <button key={si}
+                          onClick={e => { e.stopPropagation(); toggleSquare(tid, si); }}
+                          style={{
+                            width:28, height:28, border:`1.5px solid ${on?tr.color+'99':active?'#ffffff33':'#ffffff12'}`,
+                            background: active?(on?tr.color:'#ffffff18'):(on?tr.color+'55':'transparent'),
+                            cursor:'pointer', borderRadius:3,
+                            boxShadow: active&&on?`0 0 10px ${tr.color}66`:'none',
+                            transition:'background 0.04s, box-shadow 0.04s',
+                            outline:'none',
+                          }} />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+
+          {/* Beat labels */}
+          <div style={{ display:'flex', alignItems:'center', gap:2, marginTop:2 }}>
+            <div style={{ width:58, flexShrink:0 }} />
+            {[1,2,3,4].map(b => (
+              <div key={b} style={{ width:28*4+2*3, marginRight:4, fontFamily:"'Share Tech Mono',monospace", fontSize:8, color:'#333', textAlign:'center', letterSpacing:1 }}>
+                BEAT {b}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Explanation */}
+      <div style={{ fontFamily:"'Rajdhani',sans-serif", fontSize:14, color:'#777', lineHeight:1.7, marginBottom:14, padding:'10px 12px', background:'#ffffff04', borderLeft:'2px solid #ffffff10' }}>
+        {cur.explain}
+      </div>
+
+      {/* Controls */}
+      <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+        <button
+          onClick={e => { e.stopPropagation(); togglePlay(); }}
+          style={{ background:playing?'#ff704318':'#00ffcc18', border:`1.5px solid ${playing?'#ff7043':'#00ffcc'}`, color:playing?'#ff7043':'#00ffcc', padding:'8px 20px', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:11, letterSpacing:2, fontWeight:700 }}>
+          {playing ? '⏹ STOP' : '▶ PLAY'}
+        </button>
+        <button
+          onClick={e => { e.stopPropagation(); resetAll(); }}
+          style={{ background:'transparent', border:'1px solid #ffffff18', color:'#555', padding:'8px 14px', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:10, letterSpacing:1 }}>
+          RESET
+        </button>
+        <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:9, color:'#444', letterSpacing:1 }}>BPM</span>
+        <input type="range" min="70" max="180" value={bpm} step="1"
+          onClick={e => e.stopPropagation()}
+          onChange={e => { e.stopPropagation(); changeBpm(+e.target.value); }}
+          style={{ width:90, accentColor:'#00ffcc' }} />
+        <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:12, color:'#00ffcc', minWidth:28 }}>{bpm}</span>
+        {lesson < LESSONS.length-1 && (
+          <button
+            onClick={e => { e.stopPropagation(); goLesson(lesson+1); }}
+            style={{ marginLeft:'auto', background:'#00ffcc', border:'none', color:'#000', padding:'8px 18px', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:10, letterSpacing:2, fontWeight:700 }}>
+            NEXT STEP →
+          </button>
+        )}
+        {lesson === LESSONS.length-1 && (
+          <span style={{ marginLeft:'auto', fontFamily:"'Share Tech Mono',monospace", fontSize:9, color:'#00ffcc44', letterSpacing:1 }}>YOU'VE BUILT A FULL GROOVE ✓</span>
+        )}
+      </div>
+
+      <div style={{ marginTop:10, fontFamily:"'Share Tech Mono',monospace", fontSize:8, color:'#2a2a2a', letterSpacing:1 }}>
+        CLICK ANY SQUARE TO ADD / REMOVE A HIT — EXPERIMENT FREELY
+      </div>
+    </div>
+  );
+}
+
+
 export default function TechnoVocab() {
   const isMobile = useIsMobile();
   const [activeCategory, setActiveCategory] = useState("All");
@@ -5058,6 +5323,9 @@ export default function TechnoVocab() {
                         <div style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:10, color:'#555', letterSpacing:2, marginBottom:6 }}>📖 WHAT IT IS</div>
                         <p style={{ color:"#c0c0c0", fontFamily:"'Rajdhani',sans-serif", fontSize:15, lineHeight:1.7, margin:0 }}>{term.description}</p>
                       </div>
+
+                      {/* Sequencer interactive — only for term id 26 */}
+                      {term.id === 26 && <SequencerInteractive />}
 
                       {/* Why it matters */}
                       {term.why && (

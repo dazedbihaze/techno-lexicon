@@ -48,7 +48,7 @@ function sBass(ctx, out, t, { freq = 55, type = 'sawtooth', filt = 600, q = 8, d
   f.frequency.setValueAtTime(filt * 3, t); f.frequency.exponentialRampToValueAtTime(filt, t + decay * 0.6);
   const g = ctx.createGain(); g.gain.setValueAtTime(gain, t + 0.001); g.gain.exponentialRampToValueAtTime(0.001, t + decay);
   osc.connect(f); f.connect(g); g.connect(out); osc.start(t); osc.stop(t + decay + 0.05);
-}¸
+}
 
 function sAcid(ctx, out, t, { freq = 55, filt = 400, q = 20, decay = 0.16, gain = 0.48 } = {}) {
   const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = freq;
